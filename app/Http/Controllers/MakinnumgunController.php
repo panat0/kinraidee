@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\table;
-use Illuminate\Http\Request;
 
-class TableController extends Controller
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class MakinnumgunController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        return Inertia::render('Kinraidee/Index');
     }
 
     /**
@@ -34,7 +39,7 @@ class TableController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(table $table)
+    public function show(string $id)
     {
         //
     }
@@ -42,7 +47,7 @@ class TableController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(table $table)
+    public function edit(string $id)
     {
         //
     }
@@ -50,7 +55,7 @@ class TableController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, table $table)
+    public function update(Request $request, string $id)
     {
         //
     }
@@ -58,7 +63,7 @@ class TableController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(table $table)
+    public function destroy(string $id)
     {
         //
     }

@@ -14,6 +14,11 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                inter:['Inter','serif'],
+
+            },
+            colors:{
+                navcolor: '#FF9F29',
             },
         },
     },
