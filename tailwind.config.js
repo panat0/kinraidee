@@ -19,6 +19,7 @@ export default {
             },
             colors:{
                 navcolor: '#FF9F29',
+                btncolor: '#FF9F29',
             },
         },
     },
