@@ -8,7 +8,7 @@ function Nav() {
             <div className="w-full h-[64px] bg-navcolor">
                 <div className="px-[72px] flex justify-between items-center w-full h-full">
                     <div className="text-[32px] font-[700] font-inter italic">
-                        <h1>Makinnumgun</h1>
+                        <h1 className='cursor-pointer'>Makinnumgun</h1>
                     </div>
                     <div className="bg-white py-1 px-2 rounded-xl">
                         <div className="flex justify-center items-center gap-x-1">
