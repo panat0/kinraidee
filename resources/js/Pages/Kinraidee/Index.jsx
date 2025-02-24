@@ -7,8 +7,6 @@ function Index() {
         <>
             <Nav/>
             <Section/>
-                
-            
         </>
     )
 }
