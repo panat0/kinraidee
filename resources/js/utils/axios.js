@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const instance = axios.create({
-    baseURL: 'http://127.0.0.1:8000',  // หรือ window.location.origin
-    withCredentials: true,
+    baseURL: 'http://127.0.0.1:8000',
+    withCredentials: true,  // สำคัญมาก: ต้องเป็น true เพื่อส่ง cookies
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',

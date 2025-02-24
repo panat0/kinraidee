@@ -19,13 +19,17 @@ class Kernel extends HttpKernel
 
         'api' => [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
 
-    protected $middleware = [
-        // ...
-        \App\Http\Middleware\Cors::class,
+    protected $middlewareAliases = [
+        // เพิ่ม alias ที่จำเป็น
+        'auth' => \App\Http\Middleware\Authenticate::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
     ];
 }

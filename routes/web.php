@@ -27,11 +27,13 @@ Route::get('/menu/junk', [FoodController::class, 'junk'])
     ->name('menu.junk');
 Route::get('/menu/beverages', [FoodController::class, 'beverages'])
     ->name('menu.beverages');
-Route::post('/menu', [FoodController::class, 'store'])->name('menu.store');
+Route::post('/menu', [FoodController::class, 'store'])
+    ->name('menu.store')
+    ->middleware('auth:sanctum');
 
-Route::middleware(['web'])->group(function () {
-    Route::post('/menu/store', [FoodController::class, 'store'])->name('food.store');
-});
+Route::resource('userdash', UserFoodLogsController::class)
+    ->middleware('auth:sanctum');
+Route::middleware(['auth'])->group(function () {});
 
 Route::get('/login', function () {
     return Inertia::render('Login/Login');

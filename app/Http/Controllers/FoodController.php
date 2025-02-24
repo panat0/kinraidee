@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\food;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\Catagory;
+
 use Inertia\Inertia;
 use App\Models\UserFoodLogs;
 use App\Models\User;
@@ -129,42 +131,89 @@ class FoodController extends Controller
 
     public function store(Request $request)
     {
-        if (!auth()->$request->check()) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+        // เริ่มต้นการทำงาน
+        Log::info('Starting food store process');
+
+        // ตรวจสอบการล็อกอิน
+        if (!auth('sanctum')->check()) {
+            Log::warning('Authentication failed: User not logged in');
+            return response()->json(['message' => 'กรุณาเข้าสู่ระบบก่อนบันทึกรายการอาหาร'], 401);
         }
 
-        $request->validate([
-            'foods' => 'required|array',
-            'foods.*.food_id' => 'required|exists:foods,id',
-            'foods.*.catagory_id' => 'required|exists:catagory,id',
-            'foods.*.servings' => 'required|numeric|min:0.01',
-            'foods.*.total_calories' => 'required|numeric|min:0'
-        ]);
+
+        Log::info('Step completed: Authentication check passed');
+
+        // ตรวจสอบ request ว่ามีข้อมูลครบถ้วน
+        try {
+            $request->validate([
+                'foods' => 'required|array',
+                'foods.*.food_id' => 'required|exists:foods,id',
+                'foods.*.catagory_id' => 'required|exists:catagory,id',
+                'foods.*.servings' => 'required|numeric|min:0.01',
+                'foods.*.total_calories' => 'required|numeric|min:0'
+            ]);
+            Log::info('Validation passed:', $request->all());
+        } catch (\Exception $e) {
+            Log::error('Validation error: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'message' => 'ข้อมูลไม่ถูกต้อง',
+                'error' => $e->getMessage()
+            ], 422);
+        }
 
         try {
             DB::beginTransaction();
+            Log::info('Step completed: DB transaction started');
 
             $today = Carbon::today();
-            $userId = $request->auth()->id();
+            // รองรับทั้ง API token และ session authentication
+            $userId = auth('sanctum')->id();
             $totalCalories = 0;
 
-            foreach ($request->foods as $foods) {
+            Log::info('User ID:', ['id' => $userId]);
+            Log::info('Request data: ', $request->all());
+
+            foreach ($request->foods as $index => $food) {
+                Log::info('Processing food item ' . ($index + 1), $food);
+
+                // ตรวจสอบว่า food_id มีอยู่จริง
+                $foodExists = DB::table('foods')->where('id', $food['food_id'])->exists();
+                if (!$foodExists) {
+                    throw new \Exception('Food ID ' . $food['food_id'] . ' not found');
+                }
+
+                // ตรวจสอบว่า catagory_id มีอยู่จริง
+                $categoryExists = DB::table('catagory')->where('id', $food['catagory_id'])->exists();
+                if (!$categoryExists) {
+                    throw new \Exception('Category ID ' . $food['catagory_id'] . ' not found');
+                }
+
+                Log::info('Step completed: Food and category validation passed for item ' . ($index + 1));
+
+                // สร้าง UserFoodLogs record
                 UserFoodLogs::create([
                     'user_id' => $userId,
-                    'food_id' => $foods['food_id'],
-                    'catagory_id' => $foods['catagory_id'],
-                    'servings' => $foods['servings'],
-                    'total_calories' => $foods['total_calories'],
+                    'food_id' => $food['food_id'],
+                    'catagory_id' => $food['catagory_id'],
+                    'servings' => $food['servings'],
+                    'total_calories' => $food['total_calories'],
                     'date' => $today
                 ]);
 
-                $totalCalories += $foods['total_calories'];
+                Log::info('Step completed: Created food log for item ' . ($index + 1));
+
+                $totalCalories += $food['total_calories'];
             }
 
+            Log::info('Step completed: All food items processed, total calories: ' . $totalCalories);
+
+            // ตรวจสอบและอัปเดต daily summary
             $dailySummary = DailySummary::firstOrNew([
                 'user_id' => $userId,
                 'date' => $today
             ]);
+
+            Log::info('Daily summary found: ' . ($dailySummary->exists ? 'Yes' : 'No'));
 
             if (!$dailySummary->exists) {
                 $dailySummary->goal_calories = 2000;
@@ -177,7 +226,10 @@ class FoodController extends Controller
                 $dailySummary->goal_calories - $dailySummary->total_calories_consumed;
             $dailySummary->save();
 
+            Log::info('Step completed: Daily summary updated');
+
             DB::commit();
+            Log::info('Step completed: Transaction committed successfully');
 
             return response()->json([
                 'message' => 'บันทึกรายการอาหารเรียบร้อยแล้ว',
@@ -185,6 +237,13 @@ class FoodController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error occurred: ' . $e->getMessage(), [
+                'exception' => $e,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'message' => 'เกิดข้อผิดพลาดในการบันทึกรายการอาหาร',
                 'error' => $e->getMessage()

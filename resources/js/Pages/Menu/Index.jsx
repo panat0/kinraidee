@@ -1,23 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Head, usePage, router } from "@inertiajs/react";
 import { MagnifyingGlassIcon, UserIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
+import axios from 'axios';
 
 // Nav Component แบบ Nested Component
-const Nav = ({ users }) => {
+const Nav = ({ users, auth }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [userData, setUserData] = useState(null);
 
     useEffect(() => {
-        // ตรวจสอบ token ใน localStorage
+        // ตรวจสอบว่ามีข้อมูล auth.user ไหม
+        if (auth && auth.user) {
+            console.log('User data from auth props:', auth.user);
+            setIsLoggedIn(true);
+            setUserData(auth.user);
+            // บันทึกข้อมูลผู้ใช้ลง localStorage เพื่อใช้ในครั้งต่อไป
+            localStorage.setItem('user', JSON.stringify(auth.user));
+            return;
+        }
+
+        // ถ้าไม่มี auth.user จาก Inertia ให้ตรวจสอบใน localStorage เป็นแผนสำรอง
         const token = localStorage.getItem('token');
         if (token) {
-            // สมมติว่าเราเก็บข้อมูล user ใน localStorage ด้วย
-            const user = JSON.parse(localStorage.getItem('user'));
-            setIsLoggedIn(true);
-            setUserData(user);
+            // ถ้ามี token ให้ดึงข้อมูลผู้ใช้จาก API
+            axios.get('/api/user', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(response => {
+                    setIsLoggedIn(true);
+                    setUserData(response.data.user);
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsLoggedIn(false);
+                    setUserData(null);
+                });
+        } else {
+            console.log('No user found in auth or localStorage');
+            setIsLoggedIn(false);
+            setUserData(null);
         }
-    }, []);
+    }, [auth]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -113,6 +140,8 @@ const Index = ({ menuItems, categories, activeCategory = 'ทั้งหมด'
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
+    console.log('Auth data from Inertia props:', auth);
+    console.log('Auth user data:', auth.user);
     const toggleInfo = (id) => {
         setMoreInfo((prev) => ({
             ...prev,
@@ -154,8 +183,17 @@ const Index = ({ menuItems, categories, activeCategory = 'ทั้งหมด'
     };
 
     const handleSave = () => {
-        if (!auth.user) {
+        // ตรวจสอบการล็อกอินจากทั้ง auth.user และ localStorage
+        const isLoggedInViaAuth = auth && auth.user;
+        const isLoggedInViaLocalStorage = localStorage.getItem('token');
+
+        console.log('Logged in via Inertia:', isLoggedInViaAuth);
+        console.log('Logged in via localStorage:', !!isLoggedInViaLocalStorage);
+
+        // ตรวจสอบการล็อกอิน
+        if (!isLoggedInViaAuth && !isLoggedInViaLocalStorage) {
             alert('กรุณาเข้าสู่ระบบก่อนบันทึกรายการอาหาร');
+            window.location.href = '/login';
             return;
         }
 
@@ -166,6 +204,10 @@ const Index = ({ menuItems, categories, activeCategory = 'ทั้งหมด'
 
         setIsSaving(true);
 
+        // สร้าง token header ถ้ามี token
+        const token = localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
         const foodLogs = Object.values(cart).map(item => ({
             food_id: item.id,
             catagory_id: item.catagory_id,
@@ -173,23 +215,27 @@ const Index = ({ menuItems, categories, activeCategory = 'ทั้งหมด'
             total_calories: item.calories * item.quantity
         }));
 
-        router.post('/food/store', {
+        // ส่งข้อมูลพร้อม token header
+        axios.post('/api/menu/store', {
             foods: foodLogs
-        }, {
-            preserveScroll: true,
-            onSuccess: (response) => {
+        }, { headers })
+            .then(response => {
                 setCart({});
                 setIsCartOpen(false);
                 alert('บันทึกรายการอาหารเรียบร้อยแล้ว');
-            },
-            onError: (errors) => {
-                console.error('Save errors:', errors);
-                alert(errors.message || 'เกิดข้อผิดพลาดในการบันทึกรายการอาหาร');
-            },
-            onFinish: () => {
+            })
+            .catch(error => {
+                console.error('Save errors:', error);
+                if (error.response && error.response.status === 401) {
+                    alert('กรุณาเข้าสู่ระบบก่อนบันทึกรายการอาหาร');
+                    window.location.href = '/login';
+                } else {
+                    alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการอาหาร');
+                }
+            })
+            .finally(() => {
                 setIsSaving(false);
-            }
-        });
+            });
     };
 
     // กรองรายการอาหารตามคำค้นหา
@@ -269,7 +315,7 @@ const Index = ({ menuItems, categories, activeCategory = 'ทั้งหมด'
 
     return (
         <>
-            <Nav users={users} />
+            <Nav users={users} auth={auth} />
             <div className="min-h-screen bg-gray-900 p-6">
                 <div className="container mx-auto px-12">
                     <div className="mb-6">

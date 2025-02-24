@@ -19,8 +19,13 @@ class AuthController extends Controller
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'password' => ['required', 'string', 'min:8', 'confirmed',
-                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'
+                ],
                 'age' => ['required', 'integer', 'min:1', 'max:150'],
                 'weight' => ['required', 'numeric', 'min:1', 'max:999.99'],
                 'height' => ['required', 'numeric', 'min:1', 'max:999.99'],
@@ -60,13 +65,11 @@ class AuthController extends Controller
                     'user' => $user->only(['id', 'name', 'email', 'age', 'weight', 'height', 'goal_calories']),
                     'token' => $tokenResult->plainTextToken
                 ], 201);
-
             } catch (\Exception $e) {
                 // Rollback transaction if something goes wrong
                 DB::rollBack();
                 throw $e;
             }
-
         } catch (ValidationException $e) {
             Log::warning('Registration validation failed', [
                 'errors' => $e->errors(),
@@ -100,21 +103,32 @@ class AuthController extends Controller
             ]);
 
             if (Auth::attempt($credentials)) {
-                $token = $request->user()->createToken('auth-token')->plainTextToken;
+                $user = $request->user();
+                $token = $user->createToken('auth-token')->plainTextToken;
 
                 return response()->json([
+                    'status' => 'success',
                     'token' => $token,
-                    'user' => $request->user()
+                    'user' => $user->only([
+                        'id',
+                        'name',
+                        'email',
+                        'age',
+                        'weight',
+                        'height',
+                        'goal_calories',
+                        'created_at'
+                    ])
                 ]);
             }
 
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
-
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
             return response()->json([
+                'status' => 'error',
                 'message' => 'An error occurred during login.',
                 'error' => $e->getMessage()
             ], 500);
@@ -148,8 +162,14 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user()->only([
-                'id', 'name', 'email', 'age', 'weight',
-                'height', 'goal_calories', 'created_at'
+                'id',
+                'name',
+                'email',
+                'age',
+                'weight',
+                'height',
+                'goal_calories',
+                'created_at'
             ]);
 
             return response()->json([
