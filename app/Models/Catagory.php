@@ -3,17 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use HasFactory;
 
 class Catagory extends Model
 {
-    protected $table = 'catagory'; // ตั้งชื่อตาราง catagory ตามที่กำหนดใน migration
+    protected $table = 'catagory';
 
     protected $fillable = [
-        'name'
+        'name',
     ];
 
     public function foods()
     {
-        return $this->hasMany(Food::class, 'category_id');
+        return $this->hasMany(Food::class, 'catagory_id');
     }
 }

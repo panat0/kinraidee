@@ -169,6 +169,7 @@ class AuthController extends Controller
                 'weight',
                 'height',
                 'goal_calories',
+                'is_admin',
                 'created_at'
             ]);
 

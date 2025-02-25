@@ -21,6 +21,8 @@ export default {
                 navcolor: '#FF9F29',
                 btncolor: '#FF9F29',
                 bgmenu: '#1E1E1E',
+                footercolor: '#111827',
+                logocolor: '#ff4500'
             },
         },
     },

@@ -1,21 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, UserIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
+import { router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 
-const Nav = () => {
+
+const Nav = ({ users, auth }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [userData, setUserData] = useState(null);
 
     useEffect(() => {
-        // ตรวจสอบ token ใน localStorage
+        // ตรวจสอบว่ามีข้อมูล auth.user ไหม
+        if (auth && auth.user) {
+            console.log('User data from auth props:', auth.user);
+            setIsLoggedIn(true);
+            setUserData(auth.user);
+            // บันทึกข้อมูลผู้ใช้ลง localStorage เพื่อใช้ในครั้งต่อไป
+            localStorage.setItem('user', JSON.stringify(auth.user));
+            return;
+        }
+
+        // ถ้าไม่มี auth.user จาก Inertia ให้ตรวจสอบใน localStorage เป็นแผนสำรอง
         const token = localStorage.getItem('token');
         if (token) {
-            // สมมติว่าเราเก็บข้อมูล user ใน localStorage ด้วย
-            const user = JSON.parse(localStorage.getItem('user'));
-            setIsLoggedIn(true);
-            setUserData(user);
+            // ถ้ามี token ให้ดึงข้อมูลผู้ใช้จาก API
+            axios.get('/api/user', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(response => {
+                    setIsLoggedIn(true);
+                    setUserData(response.data.user);
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsLoggedIn(false);
+                    setUserData(null);
+                });
+        } else {
+            console.log('No user found in auth or localStorage');
+            setIsLoggedIn(false);
+            setUserData(null);
         }
-    }, []);
+    }, [auth]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -33,20 +62,13 @@ const Nav = () => {
                     <h1 className="cursor-pointer text-white">Makinnumgun</h1>
                 </div>
 
-                <div className="bg-white py-1 px-2 rounded-xl flex items-center w-64">
-                    <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
-                    <input
-                        type="text"
-                        placeholder="ค้นหาเมนู..."
-                        className="w-full ml-2 py-2 px-2 font-inter bg-transparent focus:outline-none"
-                    />
-                </div>
+
 
                 <div className="flex items-center gap-x-28 mr-16">
                     <ul className="flex items-center space-x-11 text-xl italic font-semibold text-white">
-                        <li className="cursor-pointer hover:text-orange-200 transition-colors">หน้าแรก</li>
-                        <li className="cursor-pointer hover:text-orange-200 transition-colors">เกี่ยวกับเรา</li>
-                        <li className="cursor-pointer hover:text-orange-200 transition-colors">เมนู</li>
+                        <li className="cursor-pointer hover:text-orange-200 transition-colors"><Link href='/'>หน้าแรก</Link></li>
+                        <li className="cursor-pointer hover:text-orange-200 transition-colors"><Link href='/menu'>เกี่ยวกับเรา</Link></li>
+                        <li className="cursor-pointer hover:text-orange-200 transition-colors"><Link href='/menu'>เมนู</Link></li>
                         <li className="cursor-pointer hover:text-orange-200 transition-colors">ติดต่อ</li>
                     </ul>
 
@@ -65,7 +87,7 @@ const Nav = () => {
                                 {showDropdown && (
                                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                                         <a
-                                            href="/profile"
+                                            href="/dashboard"
                                             className="block px-4 py-2 text-gray-800 hover:bg-orange-50 transition-colors"
                                         >
                                             ข้อมูลส่วนตัว
@@ -76,6 +98,14 @@ const Nav = () => {
                                         >
                                             แก้ไขข้อมูลส่วนตัว
                                         </a>
+                                        {userData?.is_admin === 1 && (
+                                            <a
+                                                href="/management"
+                                                className="block px-4 py-2 text-blue-600 hover:bg-blue-50 transition-colors font-semibold"
+                                            >
+                                                Admin Dashboard
+                                            </a>
+                                        )}
                                         <hr className="my-2" />
                                         <button
                                             onClick={handleLogout}

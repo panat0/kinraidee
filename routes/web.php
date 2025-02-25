@@ -3,6 +3,8 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MakinnumgunController;
+use App\Http\Controllers\ManagementController;
+use App\Http\Controllers\DailySummaryController;
 use App\Http\Controllers\UserFoodLogsController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\SocialAuthController;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::resource('/', MakinnumgunController::class);
+
 
 //menu
 Route::get('menu', [FoodController::class, 'index'])
@@ -31,9 +34,11 @@ Route::post('/menu', [FoodController::class, 'store'])
     ->name('menu.store')
     ->middleware('auth:sanctum');
 
-Route::resource('userdash', UserFoodLogsController::class)
-    ->middleware('auth:sanctum');
-Route::middleware(['auth'])->group(function () {});
+// หน้า Dashboard
+Route::get('/dashboard', [DailySummaryController::class, 'index'])
+    ->name('dashboard');
+
+Route::resource('management', ManagementController::class);
 
 Route::get('/login', function () {
     return Inertia::render('Login/Login');
